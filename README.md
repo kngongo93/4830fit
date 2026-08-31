@@ -28,6 +28,23 @@ npm run admin:create # create the first admin account
 npm run dev
 ```
 
+Verify the access model and training math at any time:
+
+```bash
+npm run smoke
+```
+
+### Postgres on this dev machine
+
+Postgres runs from an extracted binary directory rather than a registered
+Windows service, so it does not start on boot. Start it before `npm run dev`:
+
+```
+C:\Users\kevin\pgsql\bin\pg_ctl.exe -D C:\Users\kevin\pgdata -l C:\Users\kevin\pgdata\server.log start
+```
+
+Swap `start` for `stop` to shut it down. It listens on localhost only.
+
 ## Layout
 
 | Path | What lives there |
