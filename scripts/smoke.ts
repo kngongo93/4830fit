@@ -67,6 +67,31 @@ async function main() {
   );
   check("first time gives no suggestion", suggestNext([]).weight, null);
 
+  // Tied top sets: the hardest one has to win, or an opener at RPE 7
+  // followed by a grinder reads as an easy day and over-prescribes.
+  check(
+    "tied top sets judged by the hardest",
+    suggestNext(
+      [
+        { weight: 185, reps: 5, rpe: 7, isWarmup: false },
+        { weight: 185, reps: 5, rpe: 8.5, isWarmup: false },
+      ],
+      { targetReps: 5 },
+    ),
+    { weight: 185, reps: 6, reason: "RPE 8.5 - add a rep before adding weight" },
+  );
+  check(
+    "best reps at top weight decides target, hardest rpe decides the jump",
+    suggestNext(
+      [
+        { weight: 185, reps: 8, rpe: 6, isWarmup: false },
+        { weight: 185, reps: 5, rpe: 7, isWarmup: false },
+      ],
+      { targetReps: 5 },
+    ).weight,
+    195,
+  );
+
   // platesFor returns plates for ONE side of the bar.
   check("225 on a barbell", platesFor(225).plates, [45, 45]);
   check("135 on a barbell", platesFor(135).plates, [45]);

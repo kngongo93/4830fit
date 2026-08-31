@@ -68,42 +68,50 @@ export function suggestNext(
     return { weight: null, reps: null, reason: "First time logging this one" };
   }
 
-  // Top set = heaviest; ties broken by reps.
-  const top = working.reduce((best, s) =>
-    s.weight! > best.weight! || (s.weight === best.weight && s.reps! > best.reps!) ? s : best,
-  );
+  const topWeight = Math.max(...working.map((s) => s.weight!));
+  const atTopWeight = working.filter((s) => s.weight === topWeight);
 
+  // Two different questions, two different sets. "Did you hit the target?"
+  // is about your best effort at that weight. "How hard was it?" has to be
+  // the hardest of those sets, not the easiest - a first single at RPE 7
+  // followed by a grinder at 9.5 is a session you repeat, not one you add
+  // ten pounds to.
+  const bestSet = atTopWeight.reduce((best, s) => (s.reps! > best.reps! ? s : best));
+  const rpes = atTopWeight.map((s) => s.rpe).filter((r): r is number => r != null);
+  const hardestRpe = rpes.length ? Math.max(...rpes) : null;
+
+  const top = { weight: topWeight, reps: bestSet.reps! };
   const increment = opts.increment ?? defaultIncrement(opts.equipment);
-  const targetReps = opts.targetReps ?? top.reps!;
-  const hitTarget = top.reps! >= targetReps;
+  const targetReps = opts.targetReps ?? top.reps;
+  const hitTarget = top.reps >= targetReps;
 
-  if (top.rpe != null) {
-    if (top.rpe <= 7) {
+  if (hardestRpe != null) {
+    if (hardestRpe <= 7) {
       return {
-        weight: round(top.weight! + increment * 2, 1),
+        weight: round(top.weight + increment * 2, 1),
         reps: targetReps,
-        reason: `Last set felt easy (RPE ${top.rpe}) - jump ${increment * 2}`,
+        reason: `Top set felt easy (RPE ${hardestRpe}) - jump ${increment * 2}`,
       };
     }
-    if (top.rpe >= 9.5) {
+    if (hardestRpe >= 9.5) {
       return {
         weight: top.weight,
         reps: targetReps,
-        reason: `Last set was a grinder (RPE ${top.rpe}) - repeat the weight`,
+        reason: `Top set was a grinder (RPE ${hardestRpe}) - repeat the weight`,
       };
     }
-    if (top.rpe >= 8.5) {
+    if (hardestRpe >= 8.5) {
       return {
         weight: top.weight,
-        reps: top.reps! + 1,
-        reason: `RPE ${top.rpe} - add a rep before adding weight`,
+        reps: top.reps + 1,
+        reason: `RPE ${hardestRpe} - add a rep before adding weight`,
       };
     }
   }
 
   if (hitTarget) {
     return {
-      weight: round(top.weight! + increment, 1),
+      weight: round(top.weight + increment, 1),
       reps: targetReps,
       reason: `Hit ${top.reps} last time - add ${increment}`,
     };
