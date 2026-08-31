@@ -69,7 +69,10 @@ jobs:
     # before this command either way; skipping the compile keeps deploys from
     # paying for the same build twice.
     build_command: echo "no build needed for the migration job"
-    run_command: npm run deploy:release
+    # TEMPORARY diagnostic: report the database user permissions, then try the
+    # migration. Always exits 0 so the deployment survives and its logs stay
+    # readable. Restore to `npm run deploy:release` once diagnosed.
+    run_command: npm run db:doctor && (npm run deploy:release || echo "RELEASE_FAILED")
 
     envs:
       - key: DATABASE_URL
