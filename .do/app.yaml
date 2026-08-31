@@ -12,14 +12,17 @@ name: fit4830
 region: nyc
 
 databases:
+  # A real managed cluster, not an App Platform dev database. The dev tier
+  # hands the app a user with no CREATE on the database and none on public,
+  # so an app that manages its own schema can never migrate: it cannot
+  # create a single table. Verified twice on two freshly provisioned dev
+  # databases before moving here.
   - name: db
     engine: PG
-    version: "17"
-    # dev databases are single-node and the cheapest tier App Platform will
-    # attach. Move to a production cluster before this holds data you would
-    # be upset to lose.
-    cluster_name: fit4830-db
-    production: false
+    cluster_name: fit4830-pg
+    production: true
+    db_name: fit4830
+    db_user: fit_app
 
 services:
   - name: web
@@ -69,10 +72,7 @@ jobs:
     # before this command either way; skipping the compile keeps deploys from
     # paying for the same build twice.
     build_command: echo "no build needed for the migration job"
-    # TEMPORARY diagnostic: report the database user permissions, then try the
-    # migration. Always exits 0 so the deployment survives and its logs stay
-    # readable. Restore to `npm run deploy:release` once diagnosed.
-    run_command: npm run db:doctor && (npm run deploy:release || echo "RELEASE_FAILED")
+    run_command: npm run deploy:release
 
     envs:
       - key: DATABASE_URL

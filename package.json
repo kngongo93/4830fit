@@ -14,8 +14,7 @@
     "admin:create": "tsx src/db/create-admin.ts",
     "smoke": "tsx --conditions=react-server scripts/smoke.ts",
     "typecheck": "tsc --noEmit",
-    "deploy:release": "npm run db:migrate && npm run db:seed",
-    "db:doctor": "tsx scripts/db-doctor.ts"
+    "deploy:release": "npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
