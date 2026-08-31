@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { invites } from "@/db/schema";
@@ -12,6 +13,7 @@ import {
 } from "@/app/actions/sharing";
 import { ShareForm } from "@/components/share-form";
 import { InviteLink } from "@/components/invite-link";
+import { ChangePasswordForm } from "@/components/change-password-form";
 
 export default async function SettingsPage() {
   const user = await requireUser();
@@ -36,6 +38,31 @@ export default async function SettingsPage() {
           {user.role === "admin" && " · admin"}
         </p>
       </div>
+
+      {user.role === "admin" && (
+        <Link
+          href="/admin"
+          className="card flex items-center justify-between gap-3 p-4 transition hover:border-ink-600"
+        >
+          <span>
+            <span className="block text-sm font-semibold text-ink-200">Manage people</span>
+            <span className="mt-0.5 block text-xs text-ink-400">
+              Create accounts, change roles, remove people
+            </span>
+          </span>
+          <span className="shrink-0 text-ink-400">›</span>
+        </Link>
+      )}
+
+      {/* ---------------------------------------------------- password */}
+      <section>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-ink-400">
+          Password
+        </h2>
+        <div className="card p-4">
+          <ChangePasswordForm />
+        </div>
+      </section>
 
       {/* ------------------------------------------------------- units */}
       <section>
