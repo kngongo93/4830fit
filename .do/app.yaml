@@ -1,8 +1,6 @@
 # DigitalOcean App Platform spec for 4830 Fit.
 #
 # Apply with:
-#   doctl apps create --spec .do/app.yaml
-# and thereafter:
 #   doctl apps update <APP_ID> --spec .do/app.yaml
 #
 # Everything here is declarative: this file is the source of truth for the
@@ -17,9 +15,9 @@ databases:
   - name: db
     engine: PG
     version: "17"
-    # dev databases are single-node and the cheapest tier that App Platform
-    # will attach. Move to a production cluster before this holds data you
-    # would be upset to lose.
+    # dev databases are single-node and the cheapest tier App Platform will
+    # attach. Move to a production cluster before this holds data you would
+    # be upset to lose.
     cluster_name: fit4830-db
     production: false
 
@@ -38,12 +36,13 @@ services:
     run_command: npm start
 
     envs:
+      # RUN_TIME only. ${db.DATABASE_URL} is a binding App Platform resolves
+      # when the container starts; at build time it is still the literal
+      # string, so exposing it to the build only invites something to try
+      # connecting with it.
       - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
+        scope: RUN_TIME
         value: ${db.DATABASE_URL}
-      - key: NODE_ENV
-        scope: RUN_AND_BUILD_TIME
-        value: production
 
     health_check:
       http_path: /api/health
@@ -65,10 +64,14 @@ jobs:
       branch: main
       deploy_on_push: true
 
-    build_command: npm run build
+    # The job runs tsx against the TypeScript sources directly, so it needs
+    # node_modules but not a Next build. The buildpack installs dependencies
+    # before this command either way; skipping the compile keeps deploys from
+    # paying for the same build twice.
+    build_command: echo "no build needed for the migration job"
     run_command: npm run deploy:release
 
     envs:
       - key: DATABASE_URL
-        scope: RUN_AND_BUILD_TIME
+        scope: RUN_TIME
         value: ${db.DATABASE_URL}
