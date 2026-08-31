@@ -36,7 +36,18 @@ services:
       deploy_on_push: true
 
     build_command: npm run build
-    run_command: npm start
+    # Migrations run on start rather than in a PRE_DEPLOY job. The job
+    # component failed twice with App Platform's opaque InternalError before
+    # its container ever started - the same commit, the same image, nothing
+    # of ours executed. A pre-deploy job is the better shape (it fails the
+    # deploy while the old version keeps serving) so this is worth revisiting,
+    # but a component the platform will not launch protects nothing.
+    #
+    # The safety mostly survives: migrate runs before next start, so a failed
+    # migration exits non-zero, the container never serves, the deploy fails,
+    # and App Platform rolls back to the previous version. Both steps are
+    # idempotent, so a restart or a redeploy with nothing pending is a no-op.
+    run_command: npm run deploy:release && npm start
 
     envs:
       # RUN_TIME only. ${db.DATABASE_URL} is a binding App Platform resolves
@@ -53,28 +64,3 @@ services:
       period_seconds: 30
       failure_threshold: 3
 
-jobs:
-  # Runs before the new version takes traffic. A failed migration fails the
-  # deploy and leaves the previous version serving, rather than crash-looping
-  # a new container against a half-migrated database.
-  - name: migrate
-    kind: PRE_DEPLOY
-    instance_size_slug: apps-s-1vcpu-0.5gb
-    instance_count: 1
-
-    github:
-      repo: kngongo93/4830fit
-      branch: main
-      deploy_on_push: true
-
-    # The job runs tsx against the TypeScript sources directly, so it needs
-    # node_modules but not a Next build. The buildpack installs dependencies
-    # before this command either way; skipping the compile keeps deploys from
-    # paying for the same build twice.
-    build_command: echo "no build needed for the migration job"
-    run_command: npm run deploy:release
-
-    envs:
-      - key: DATABASE_URL
-        scope: RUN_TIME
-        value: ${db.DATABASE_URL}
