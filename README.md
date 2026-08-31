@@ -18,7 +18,7 @@ explicitly grant them access, and you can revoke that at any time.
 npm install
 ```
 
-Copy `.env.example` to `.env` and fill in `DATABASE_URL` and `SESSION_SECRET`.
+Copy `.env.example` to `.env` and fill in `DATABASE_URL`.
 
 ```bash
 createdb fit4830

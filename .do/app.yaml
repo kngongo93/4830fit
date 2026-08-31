@@ -1,0 +1,73 @@
+# DigitalOcean App Platform spec for 4830 Fit.
+#
+# Apply with:
+#   doctl apps create --spec .do/app.yaml
+# and thereafter:
+#   doctl apps update <APP_ID> --spec .do/app.yaml
+#
+# Everything here is declarative: this file is the source of truth for the
+# deployment, so a change is reviewed in a diff rather than clicked into a
+# dashboard and forgotten.
+
+name: 4830fit
+region: nyc
+
+databases:
+  - name: db
+    engine: PG
+    version: "17"
+    # dev databases are single-node and the cheapest tier that App Platform
+    # will attach. Move to a production cluster before this holds data you
+    # would be upset to lose.
+    cluster_name: fit4830-db
+    production: false
+
+services:
+  - name: web
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+    http_port: 3000
+
+    github:
+      repo: kngongo93/4830fit
+      branch: main
+      deploy_on_push: true
+
+    build_command: npm run build
+    run_command: npm start
+
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE_URL}
+      - key: NODE_ENV
+        scope: RUN_AND_BUILD_TIME
+        value: production
+
+    health_check:
+      http_path: /api/health
+      initial_delay_seconds: 20
+      period_seconds: 30
+      failure_threshold: 3
+
+jobs:
+  # Runs before the new version takes traffic. A failed migration fails the
+  # deploy and leaves the previous version serving, rather than crash-looping
+  # a new container against a half-migrated database.
+  - name: migrate
+    kind: PRE_DEPLOY
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    instance_count: 1
+
+    github:
+      repo: kngongo93/4830fit
+      branch: main
+      deploy_on_push: true
+
+    build_command: npm run build
+    run_command: npm run deploy:release
+
+    envs:
+      - key: DATABASE_URL
+        scope: RUN_AND_BUILD_TIME
+        value: ${db.DATABASE_URL}
