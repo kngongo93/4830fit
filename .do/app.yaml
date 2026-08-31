@@ -9,7 +9,8 @@
 # deployment, so a change is reviewed in a diff rather than clicked into a
 # dashboard and forgotten.
 
-name: 4830fit
+# App Platform names must start with a letter, so the digits move to the end.
+name: fit4830
 region: nyc
 
 databases:
