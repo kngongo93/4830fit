@@ -47,12 +47,7 @@ services:
     # migration exits non-zero, the container never serves, the deploy fails,
     # and App Platform rolls back to the previous version. Both steps are
     # idempotent, so a restart or a redeploy with nothing pending is a no-op.
-    # TEMPORARY: migrations are not running at boot. The leaking build holds
-    # every connection slot, so a replacement that migrates on start cannot
-    # get a connection, fails, and is rolled back to the leaker - a deadlock
-    # only broken by starting a container that needs no database to boot.
-    # Restore to `npm run deploy:release && npm start` once it is healthy.
-    run_command: npm start
+    run_command: npm run deploy:release && npm start
 
     envs:
       # RUN_TIME only. ${db.DATABASE_URL} is a binding App Platform resolves
