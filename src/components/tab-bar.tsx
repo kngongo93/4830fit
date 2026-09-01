@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 
 const TABS = [
   { href: "/today", label: "Today", icon: DumbbellIcon },
+  { href: "/programs", label: "Programs", icon: CalendarIcon },
   { href: "/history", label: "History", icon: ClockIcon },
   { href: "/exercises", label: "Lifts", icon: ListIcon },
   { href: "/crew", label: "Crew", icon: PeopleIcon },
@@ -48,6 +49,15 @@ function DumbbellIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
       <path strokeLinecap="round" d="M6.5 6.5v11M3.5 9v5M17.5 6.5v11M20.5 9v5M6.5 12h11" />
+    </svg>
+  );
+}
+
+function CalendarIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" {...props}>
+      <rect x="3.5" y="5" width="17" height="15" rx="2" />
+      <path strokeLinecap="round" d="M3.5 10h17M8 3.5v3M16 3.5v3" />
     </svg>
   );
 }

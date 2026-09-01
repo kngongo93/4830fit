@@ -62,8 +62,15 @@ export default async function WorkoutPage({ params }: { params: Promise<{ id: st
       )}
 
       <ul className="space-y-4">
-        {cards.map(({ entry, last, suggestion }) => (
+        {cards.map(({ entry, last, suggestion }, i) => (
           <li key={entry.entryId}>
+            {/* Block heading, printed once when the block changes, so a
+                programmed session reads the way it was written. */}
+            {entry.blockName && entry.blockName !== cards[i - 1]?.entry.blockName && (
+              <h2 className="mb-2 mt-2 text-xs font-semibold uppercase tracking-wide text-accent">
+                {entry.blockName}
+              </h2>
+            )}
             <ExerciseCard
               entryId={entry.entryId}
               exercise={entry.exercise}

@@ -1,7 +1,13 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { accessGrants, users, workouts, routines } from "@/db/schema";
+import {
+  accessGrants,
+  users,
+  workouts,
+  routines,
+  routineAssignments,
+} from "@/db/schema";
 
 /**
  * Every cross-user read in the app goes through this file.
@@ -103,24 +109,73 @@ export async function getEditableWorkout(userId: string, workoutId: string) {
   return workout ?? null;
 }
 
-/**
- * Routines the viewer can open: their own, plus "crew"-visible routines
- * belonging to people who granted them access.
- */
-export async function listAccessibleRoutines(viewerId: string) {
-  const visible = await listVisibleTo(viewerId);
-  const ownerIds = [viewerId, ...visible.map((v) => v.id)];
+/* -------------------------------------------------------------- programs */
 
-  const rows = await db
-    .select({
-      routine: routines,
-      ownerName: users.name,
-    })
+/**
+ * A program is editable by the person who wrote it and by anyone it has
+ * been assigned to. Prescribed training is a starting point, so an athlete
+ * can swap an exercise or change a rep target without going back to the
+ * coach.
+ */
+export async function canEditRoutine(userId: string, routineId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ ownerId: routines.ownerId, assignedTo: routineAssignments.userId })
+    .from(routines)
+    .leftJoin(
+      routineAssignments,
+      and(
+        eq(routineAssignments.routineId, routines.id),
+        eq(routineAssignments.userId, userId),
+      ),
+    )
+    .where(eq(routines.id, routineId))
+    .limit(1);
+
+  if (!row) return false;
+  return row.ownerId === userId || row.assignedTo === userId;
+}
+
+/** Loads a program only if the caller may edit it, else null (reads as 404). */
+export async function getEditableRoutine(userId: string, routineId: string) {
+  if (!(await canEditRoutine(userId, routineId))) return null;
+  const [routine] = await db.select().from(routines).where(eq(routines.id, routineId)).limit(1);
+  return routine ?? null;
+}
+
+/**
+ * Every program the user can run: ones they wrote, and ones assigned to
+ * them by somebody else.
+ */
+export async function listRoutinesFor(userId: string) {
+  const owned = await db
+    .select({ routine: routines, authorName: users.name, assigned: sql<boolean>`false` })
     .from(routines)
     .innerJoin(users, eq(users.id, routines.ownerId))
-    .where(inArray(routines.ownerId, ownerIds));
+    .where(and(eq(routines.ownerId, userId), isNull(routines.archivedAt)));
 
-  return rows.filter(
-    (r) => r.routine.ownerId === viewerId || r.routine.visibility === "crew",
-  );
+  const assigned = await db
+    .select({ routine: routines, authorName: users.name, assigned: sql<boolean>`true` })
+    .from(routineAssignments)
+    .innerJoin(routines, eq(routines.id, routineAssignments.routineId))
+    .innerJoin(users, eq(users.id, routines.ownerId))
+    .where(and(eq(routineAssignments.userId, userId), isNull(routines.archivedAt)));
+
+  // A program you wrote for yourself and also assigned to yourself should
+  // only appear once.
+  const seen = new Set(owned.map((r) => r.routine.id));
+  return [...owned, ...assigned.filter((r) => !seen.has(r.routine.id))];
+}
+
+/** Who a program has been handed to, for the author's management screen. */
+export async function listRoutineAssignees(routineId: string) {
+  return db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      assignedAt: routineAssignments.createdAt,
+    })
+    .from(routineAssignments)
+    .innerJoin(users, eq(users.id, routineAssignments.userId))
+    .where(eq(routineAssignments.routineId, routineId));
 }

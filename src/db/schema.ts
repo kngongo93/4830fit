@@ -151,7 +151,12 @@ export const routines = pgTable(
   (t) => [index("routines_owner_idx").on(t.ownerId)],
 );
 
-/** A single day within a routine: "Push A", "Legs B". */
+/**
+ * A training day within a program: "Monday", "Push A".
+ *
+ * weekday is 0-6 (Sunday first) when the day is pinned to a day of the
+ * week, and null for programs that are just an ordered rotation.
+ */
 export const routineDays = pgTable(
   "routine_days",
   {
@@ -160,18 +165,39 @@ export const routineDays = pgTable(
       .notNull()
       .references(() => routines.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
+    weekday: integer("weekday"),
     position: integer("position").notNull().default(0),
   },
   (t) => [index("routine_days_routine_idx").on(t.routineId)],
+);
+
+/**
+ * A named section within a day - "Block A: chest and triceps", "Block B:
+ * cardio". A day is a list of blocks, and each block is a list of
+ * exercises, which is how a written program actually reads.
+ */
+export const routineBlocks = pgTable(
+  "routine_blocks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    routineDayId: uuid("routine_day_id")
+      .notNull()
+      .references(() => routineDays.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "Block A"
+    focus: text("focus"), // "chest and triceps"
+    note: text("note"),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [index("routine_blocks_day_idx").on(t.routineDayId)],
 );
 
 export const routineItems = pgTable(
   "routine_items",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    routineDayId: uuid("routine_day_id")
+    blockId: uuid("block_id")
       .notNull()
-      .references(() => routineDays.id, { onDelete: "cascade" }),
+      .references(() => routineBlocks.id, { onDelete: "cascade" }),
     exerciseId: uuid("exercise_id")
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
@@ -181,7 +207,36 @@ export const routineItems = pgTable(
     targetRpe: real("target_rpe"),
     notes: text("notes"),
   },
-  (t) => [index("routine_items_day_idx").on(t.routineDayId)],
+  (t) => [index("routine_items_block_idx").on(t.blockId)],
+);
+
+/**
+ * Who is running a program. The author keeps ownerId on the routine; every
+ * athlete it has been handed to gets a row here.
+ *
+ * An assignee can edit what they were given - the programming is a starting
+ * point, not a contract, so swapping an exercise or changing a rep target
+ * does not require going back to whoever wrote it.
+ */
+export const routineAssignments = pgTable(
+  "routine_assignments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    routineId: uuid("routine_id")
+      .notNull()
+      .references(() => routines.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    assignedBy: uuid("assigned_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("routine_assignments_pair_idx").on(t.routineId, t.userId),
+    index("routine_assignments_user_idx").on(t.userId),
+  ],
 );
 
 /* ------------------------------------------------------------- workouts */
@@ -216,6 +271,12 @@ export const workoutExercises = pgTable(
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
     position: integer("position").notNull().default(0),
+    /**
+     * Snapshot of the block this came from, copied rather than referenced.
+     * A session should still read the way it was performed even after the
+     * program that produced it is edited or deleted.
+     */
+    blockName: text("block_name"),
     notes: text("notes"),
   },
   (t) => [
@@ -322,11 +383,22 @@ export const routinesRelations = relations(routines, ({ one, many }) => ({
 
 export const routineDaysRelations = relations(routineDays, ({ one, many }) => ({
   routine: one(routines, { fields: [routineDays.routineId], references: [routines.id] }),
+  blocks: many(routineBlocks),
+}));
+
+export const routineBlocksRelations = relations(routineBlocks, ({ one, many }) => ({
+  day: one(routineDays, {
+    fields: [routineBlocks.routineDayId],
+    references: [routineDays.id],
+  }),
   items: many(routineItems),
 }));
 
 export const routineItemsRelations = relations(routineItems, ({ one }) => ({
-  day: one(routineDays, { fields: [routineItems.routineDayId], references: [routineDays.id] }),
+  block: one(routineBlocks, {
+    fields: [routineItems.blockId],
+    references: [routineBlocks.id],
+  }),
   exercise: one(exercises, { fields: [routineItems.exerciseId], references: [exercises.id] }),
 }));
 

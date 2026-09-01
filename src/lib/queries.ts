@@ -27,6 +27,7 @@ export type WorkoutEntry = {
   entryId: string;
   position: number;
   notes: string | null;
+  blockName: string | null;
   exercise: Exercise;
   sets: WorkoutSet[];
 };
@@ -38,6 +39,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutEntry[
       entryId: workoutExercises.id,
       position: workoutExercises.position,
       notes: workoutExercises.notes,
+      blockName: workoutExercises.blockName,
       exercise: exercises,
       set: sets,
     })
@@ -55,6 +57,7 @@ export async function getWorkoutDetail(workoutId: string): Promise<WorkoutEntry[
         entryId: row.entryId,
         position: row.position,
         notes: row.notes,
+        blockName: row.blockName,
         exercise: row.exercise,
         sets: [],
       };

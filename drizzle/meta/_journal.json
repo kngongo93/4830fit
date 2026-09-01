@@ -8,6 +8,20 @@
       "when": 1788140206746,
       "tag": "0000_initial_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788222043895,
+      "tag": "0001_add_program_blocks",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788222057908,
+      "tag": "0002_block_items_only",
+      "breakpoints": true
     }
   ]
 }
